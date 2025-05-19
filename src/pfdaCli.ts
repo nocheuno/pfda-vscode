@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -305,15 +305,25 @@ export class PfdaCli {
 
 
   public static findPfdaCliPath(workspacePath: string): string {
+    const whichResult = spawnSync('which', ['pfda']);
+    const whichPath = whichResult.stdout?.toString().trim();
+    if (whichPath) {
+      console.log('Found pfda in PATH:', whichPath);
+      
+      return whichPath;
+    }
+
     const possiblePaths = [
-      path.join(workspacePath, 'pfda')
+      path.join(workspacePath, 'pfda'),
     ];
     for (const cliPath of possiblePaths) {
       if (fs.existsSync(cliPath)) {
+        console.log('found pfda in workspace:', cliPath);
         return cliPath;
       }
     }
-    throw new Error(`PFDA CLI not found in expected locations. Please install the pfda CLI or configure its path.\n ${path.join(workspacePath, 'packages', 'cli', 'pfda')}`);
+
+    throw new Error(`PFDA CLI not found. Checked: ${possiblePaths.join(', ')} and PATH`);
   }
 
 
@@ -366,12 +376,6 @@ export class PfdaCli {
   ): Promise<void> {
     try {
       console.log(`PfdaCli: Starting _deleteRemoteDirectoryInternal for directory ID ${directoryId}`);
-      
-      // Try the rmdir command with -recursive flag first (most efficient if supported)
-      const rmdirArgs = ['rmdir', directoryId, '-recursive'];
-      if (spaceId && spaceId !== 'my-home') {
-        rmdirArgs.push('-space-id', spaceId);
-      }
       
       // Manual approach: List contents, delete files, recursively delete subdirectories
       // List all items in the directory

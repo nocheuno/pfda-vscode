@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { PfdaCli } from './pfdaCli';
 import { PfdaExecutionNode } from './pfdaExecutionNode';
 
@@ -291,6 +292,3 @@ export class PfdaExecutionExplorer implements vscode.TreeDataProvider<PfdaExecut
     this.disposables.forEach(d => d.dispose());
   }
 }
-
-// Need to import path
-import * as path from 'path';

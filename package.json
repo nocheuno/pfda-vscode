@@ -9,6 +9,10 @@
 	"engines": {
 		"vscode": "^1.74.0"
 	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/nocheuno/pfda-vscode"
+	},
 	"categories": [
 		"Other"
 	],
