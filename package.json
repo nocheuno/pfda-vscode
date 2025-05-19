@@ -1,0 +1,324 @@
+{
+	"name": "pfda-vscode-plugin",
+	"displayName": "VSCode Plugin",
+	"description": "A plugin for the PFDA platform that provides a file explorer, execution explorer, and app explorer.",
+	"version": "0.0.1",
+	"author": "ddcech",
+	"private": true,
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.74.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onLanguage:json",
+		"onLanguage:jsonc"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "pfda-explorer",
+					"title": "PFDA Explorer",
+					"icon": "media/dep.svg"
+				}
+			]
+		},
+		"views": {
+			"pfda-explorer": [
+				{
+					"id": "spaceSelector",
+					"name": "Space Selector",
+					"icon": "resources/light/folder.svg",
+					"contextualTitle": "PFDA Spaces"
+				},
+				{
+					"id": "pfdaFileExplorer",
+					"name": "PFDA File Explorer",
+					"icon": "media/dep.svg",
+					"contextualTitle": "PFDA Files"
+				},
+				{
+					"id": "pfdaExecutionExplorer",
+					"name": "PFDA Executions",
+					"icon": "media/zap.svg",
+					"contextualTitle": "PFDA Executions"
+				},
+				{
+					"id": "pfdaAppExplorer",
+					"name": "PFDA Apps",
+					"icon": "media/dep.svg",
+					"contextualTitle": "PFDA Apps"
+				}
+			],
+			"package-explorer": [
+				{
+					"id": "nodeDependencies",
+					"name": "Node Dependencies",
+					"icon": "media/dep.svg",
+					"contextualTitle": "Package Explorer"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "pfdaFileExplorer.refresh",
+				"title": "Refresh",
+				"icon": {
+					"light": "resources/light/refresh.svg",
+					"dark": "resources/dark/refresh.svg"
+				}
+			},
+			{
+				"command": "spaceSelector.refresh",
+				"title": "Refresh Spaces",
+				"icon": {
+					"light": "resources/light/refresh.svg",
+					"dark": "resources/dark/refresh.svg"
+				}
+			},
+			{
+				"command": "spaceSelector.selectSpace",
+				"title": "Select Space"
+			},
+			{
+				"command": "spaceSelector.addSpace",
+				"title": "Add Space",
+				"icon": {
+					"light": "resources/light/plus.svg",
+					"dark": "resources/dark/plus.svg"
+				}
+			},
+			{
+				"command": "pfdaExecutionExplorer.refresh",
+				"title": "Refresh Executions",
+				"icon": {
+					"light": "resources/light/refresh.svg",
+					"dark": "resources/dark/refresh.svg"
+				}
+			},
+			{
+				"command": "pfdaExecutionExplorer.terminateExecution",
+				"title": "Terminate Execution",
+				"icon": {
+					"light": "resources/light/x.svg",
+					"dark": "resources/dark/x.svg"
+				}
+			},
+			{
+				"command": "pfdaExecutionExplorer.rerunExecution",
+				"title": "Rerun Execution",
+				"icon": {
+					"light": "resources/light/refresh.svg",
+					"dark": "resources/dark/refresh.svg"
+				}
+			},
+			{
+				"command": "pfdaExecutionExplorer.openExternal",
+				"title": "Open in Browser",
+				"icon": {
+					"light": "resources/light/globe.svg",
+					"dark": "resources/dark/globe.svg"
+				}
+			},
+			{
+				"command": "pfdaAppExplorer.refresh",
+				"title": "Refresh Apps",
+				"icon": {
+					"light": "resources/light/refresh.svg",
+					"dark": "resources/dark/refresh.svg"
+				}
+			},
+			{
+				"command": "pfdaAppExplorer.openApp",
+				"title": "Open App Details",
+				"icon": {
+					"light": "resources/light/document.svg",
+					"dark": "resources/dark/document.svg"
+				}
+			},
+			{
+				"command": "pfdaAppExplorer.createTemplate",
+				"title": "Create Run Template",
+				"icon": {
+					"light": "resources/light/plus.svg",
+					"dark": "resources/dark/plus.svg"
+				}
+			},
+			{
+				"command": "pfdaAppExplorer.editTemplate",
+				"title": "Edit Template",
+				"icon": {
+					"light": "resources/light/edit.svg",
+					"dark": "resources/dark/edit.svg"
+				}
+			},
+			{
+				"command": "pfdaAppExplorer.deleteTemplate",
+				"title": "Delete Template",
+				"icon": {
+					"light": "resources/light/x.svg",
+					"dark": "resources/dark/x.svg"
+				}
+			},
+			{
+				"command": "pfdaAppExplorer.runTemplate",
+				"title": "Run Template",
+				"icon": {
+					"light": "resources/light/play.svg",
+					"dark": "resources/dark/play.svg"
+				}
+			},
+			{
+				"command": "pfdaFileExplorer.copyFileDxid",
+				"title": "Copy File DXID",
+				"icon": {
+					"light": "resources/light/document.svg",
+					"dark": "resources/dark/document.svg"
+				}
+			},
+			{
+				"command": "pfdaFileExplorer.deleteItems",
+				"title": "Delete Selected",
+				"icon": {
+					"light": "resources/light/x.svg",
+					"dark": "resources/dark/x.svg"
+				}
+			},
+			{
+				"command": "pfdaFileExplorer.mkdir",
+				"title": "New folder...",
+				"icon": {
+					"light": "resources/light/plus.svg",
+					"dark": "resources/dark/plus.svg"
+				}
+			}
+		],
+		"menus": {
+				"explorer/context": [
+					{
+						"command": "pfdaFileExplorer.mkdir",
+						"when": "viewItem =~ /^folder$|^workspaceFolder$|^directory$/",
+						"group": "2_workspace"
+					}
+				],
+				"view/title": [
+					{
+						"command": "pfdaFileExplorer.refresh",
+						"when": "view == pfdaFileExplorer",
+						"group": "navigation"
+					},
+					{
+						"command": "spaceSelector.refresh",
+						"when": "view == spaceSelector",
+						"group": "navigation"
+					},
+					{
+						"command": "spaceSelector.addSpace",
+						"when": "view == spaceSelector",
+						"group": "navigation"
+					},
+					{
+						"command": "pfdaExecutionExplorer.refresh",
+						"when": "view == pfdaExecutionExplorer",
+						"group": "navigation"
+					},
+					{
+						"command": "pfdaAppExplorer.refresh",
+						"when": "view == pfdaAppExplorer",
+						"group": "navigation"
+					}
+				],
+				"view/item/context": [
+					{
+						"command": "pfdaExecutionExplorer.terminateExecution",
+						"when": "view == pfdaExecutionExplorer && viewItem != execution-terminated && viewItem != execution-completed",
+						"group": "inline"
+					},
+					{
+						"command": "pfdaExecutionExplorer.rerunExecution",
+						"when": "view == pfdaExecutionExplorer && (viewItem == execution-completed || viewItem == execution-terminated)",
+						"group": "inline"
+					},
+					{
+						"command": "pfdaExecutionExplorer.openExternal",
+						"when": "view == pfdaExecutionExplorer && viewItem == execution-running",
+						"group": "inline"
+					},
+					{
+						"command": "pfdaAppExplorer.openApp",
+						"when": "view == pfdaAppExplorer && viewItem == app",
+						"group": "inline"
+					},
+					{
+						"command": "pfdaAppExplorer.createTemplate",
+						"when": "view == pfdaAppExplorer && viewItem == app",
+						"group": "inline"
+					},
+					{
+						"command": "pfdaAppExplorer.editTemplate",
+						"when": "view == pfdaAppExplorer && viewItem == template",
+						"group": "inline"
+					},
+					{
+						"command": "pfdaAppExplorer.runTemplate",
+						"when": "view == pfdaAppExplorer && viewItem == template",
+						"group": "inline"
+					},
+					{
+						"command": "pfdaAppExplorer.deleteTemplate",
+						"when": "view == pfdaAppExplorer && viewItem == template",
+						"group": "inline"
+					},
+					{
+						"command": "pfdaFileExplorer.copyFileDxid",
+						"when": "view == pfdaFileExplorer && viewItem == file",
+						"group": "1_copy"
+					},
+					{
+						"command": "pfdaFileExplorer.mkdir",
+						"when": "view == pfdaFileExplorer",
+						"group": "2_creation@1"
+					},
+					{
+						"command": "pfdaFileExplorer.mkdir",
+						"when": "view == pfdaFileExplorer && viewItem == directory",
+						"group": "2_creation@1"
+					},
+					{
+						"command": "pfdaFileExplorer.deleteItems",
+						"when": "view == pfdaFileExplorer",
+						"group": "3_delete"
+					}
+				]
+			}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"lint": "eslint"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.13.0",
+		"@stylistic/eslint-plugin": "^2.9.0",
+		"@types/ftp": "^0.3.33",
+		"@types/mkdirp": "^0.5.2",
+		"@types/node": "^20",
+		"@types/rimraf": "^2.0.2",
+		"@types/vscode": "^1.73.0",
+		"eslint": "^9.13.0",
+		"typescript": "^5.8.2",
+		"typescript-eslint": "^8.26.0"
+	},
+	"dependencies": {
+		"ftp": "^0.3.10",
+		"jsonc-parser": "^0.4.2",
+		"minimist": "^1.2.6",
+		"mkdirp": "^0.5.1",
+		"rimraf": "^2.6.2"
+	}
+}
