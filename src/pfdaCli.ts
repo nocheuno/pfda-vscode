@@ -97,212 +97,154 @@ export class PfdaCli {
    * @returns A promise that resolves when the upload is complete
    */
   public async uploadFiles(
-    filePaths: string[], 
-    spaceId?: string, 
-    folderId?: string, 
-    options?: { threads?: number; chunksize?: number }
+    filePaths: string[],
+    spaceId?: string,
+    folderId?: string,
+    options?: { threads?: number; chunksize?: number; showProgress?: boolean }
   ): Promise<void> {
     console.log(`PfdaCli: Starting uploadFiles with paths=${JSON.stringify(filePaths)}, spaceId=${spaceId}, folderId=${folderId}`);
-    // Create progress window
+    // Separate internal upload options from showProgress flag
+    const { showProgress, ...internalOptions } = options || {};
+    // If user opts out of progress UI, run upload directly
+    if (showProgress === false) {
+      return this._uploadFilesInternal(filePaths, spaceId, folderId, internalOptions);
+    }
+    // Otherwise wrap in a VS Code progress notification
     return vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: `Uploading ${filePaths.length} file(s)`,
       cancellable: true
-    }, async (progress, token) => {
-      // Get filesystem stats to check for directories
-      const fileStats = await Promise.all(filePaths.map(async (filePath) => {
-        try {
-          const stats = await fs.promises.stat(filePath);
-          return { 
-            path: filePath, 
-            isDirectory: stats.isDirectory(),
-            size: stats.size
-          };
-        } catch (e) {
-          console.error(`Error getting stats for ${filePath}:`, e);
-          return { path: filePath, isDirectory: false, size: 0 };
-        }
-      }));
-      
-      console.log(`PfdaCli: File stats: ${JSON.stringify(fileStats)}`);
-      
-      // Count total files (including nested ones in directories)
-      let totalFiles = 0;
-      
-      // Recursively count files in directories
-      const countFilesInDirectory = async (dirPath: string): Promise<number> => {
-        let fileCount = 0;
-        
-        try {
-          const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
-          
-          for (const entry of entries) {
-            const fullPath = path.join(dirPath, entry.name);
-            
-            if (entry.isDirectory()) {
-              const filesInDir = await countFilesInDirectory(fullPath);
-              fileCount += filesInDir;
-            } else {
-              fileCount++;
-            }
-          }
-        } catch (e) {
-          console.error(`Error counting files in ${dirPath}:`, e);
-        }
-        
-        return fileCount;
-      };
-      
-      // Count all files
-      for (const file of fileStats) {
-        if (file.isDirectory) {
-          const filesInDir = await countFilesInDirectory(file.path);
-          totalFiles += filesInDir;
-        } else {
-          totalFiles++;
-        }
-      }
-      
-      console.log(`PfdaCli: Total files to upload: ${totalFiles}`);
-      
-      // If no files found, exit early
-      if (totalFiles === 0) {
-        console.log(`PfdaCli: No files found to upload`);
-        vscode.window.showWarningMessage('No files found to upload.');
-        return;
-      }
-      
-      // Update status bar to show upload in progress
-      pfdaStatusBarItem.text = `$(cloud-upload) PFDA: Uploading 0/${totalFiles} files`;
-      pfdaStatusBarItem.tooltip = `Uploading ${totalFiles} file(s)`;
-      
-      // Setup args array starting with the command
-      const args = ['upload-file'];
+    }, (progress, token) => this._uploadFilesInternal(filePaths, spaceId, folderId, internalOptions, progress, token));
+  }
 
-      // Add each file path as a separate argument at the end
-      filePaths.forEach(filePath => {
-        args.push(filePath);
-      });
-      
-      // Add space-id if provided (not for "my-home")
-      if (spaceId && spaceId !== 'my-home') {
-        console.log(`PfdaCli: Adding space-id ${spaceId} to upload command`);
-        args.push('-space-id', spaceId);
-      } else {
-        console.log(`PfdaCli: No space-id added to upload command (spaceId=${spaceId})`);
+  private async _uploadFilesInternal(
+    filePaths: string[],
+    spaceId?: string,
+    folderId?: string,
+    options?: { threads?: number; chunksize?: number },
+    progress?: vscode.Progress<{ message?: string; increment?: number }>,
+    _token?: vscode.CancellationToken
+  ): Promise<void> {
+    console.log(`PfdaCli: Starting _uploadFilesInternal with paths=${JSON.stringify(filePaths)}, spaceId=${spaceId}, folderId=${folderId}`);
+    // Get filesystem stats to check for directories
+    const fileStats = await Promise.all(filePaths.map(async (filePath) => {
+      try {
+        const stats = await fs.promises.stat(filePath);
+        return { 
+          path: filePath, 
+          isDirectory: stats.isDirectory(),
+          size: stats.size
+        };
+      } catch (e) {
+        console.error(`Error getting stats for ${filePath}:`, e);
+        return { path: filePath, isDirectory: false, size: 0 };
       }
+    }));
+    
+    console.log(`PfdaCli: File stats: ${JSON.stringify(fileStats)}`);
+    
+    // Count total files (including nested ones in directories)
+    let totalFiles = 0;
+    
+    // Recursively count files in directories
+    const countFilesInDirectory = async (dirPath: string): Promise<number> => {
+      let fileCount = 0;
       
-      // Add folder-id if provided
-      if (folderId) {
-        console.log(`PfdaCli: Adding folder-id ${folderId} to upload command`);
-        args.push('-folder-id', folderId);
-      } else {
-        console.log(`PfdaCli: No folder-id provided for upload command`);
-      }
-      
-      // Add threads if provided
-      if (options?.threads) {
-        console.log(`PfdaCli: Setting threads to ${options.threads}`);
-        args.push('-threads', options.threads.toString());
-      }
-      
-      // Add chunksize if provided
-      if (options?.chunksize) {
-        console.log(`PfdaCli: Setting chunksize to ${options.chunksize}`);
-        args.push('-chunksize', options.chunksize.toString());
-      }
-      
-      // Create cancellation token
-      const cancelTokenSource = new vscode.CancellationTokenSource();
-      token.onCancellationRequested(() => {
-        cancelTokenSource.cancel();
-      });
-      
-      return new Promise<void>((resolve, reject) => {
-        console.log(`PfdaCli: Executing upload command: ${this.cliPath} ${args.join(' ')}`);
+      try {
+        const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
         
-        // Update status bar to show upload in progress
-        pfdaStatusBarItem.text = '$(cloud-upload) PFDA: Uploading...';
-        pfdaStatusBarItem.tooltip = `Uploading ${filePaths.length} file(s)`;
-        
-        const proc = spawn(this.cliPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-        console.log(`PfdaCli: Spawned upload process with PID ${proc.pid}`);
-        
-        // Variables to store process output
-        let stderr = '';
-        let lastProgressUpdate = 0;
-        let filesProcessed = 0;
-        
-        proc.stdout.on('data', (data) => { 
-          // Extract progress information if available
-          const output = data.toString();
-
-          console.log(`PfdaCli: Upload process output: ${output}`);
+        for (const entry of entries) {
+          const fullPath = path.join(dirPath, entry.name);
           
-          // Look for file completion markers
-          const fileCompletedLines = output.split('\n').filter((line: string) => 
-            line.includes('successfully uploaded') || 
-            line.includes('Uploaded file'));
-          
-          if (fileCompletedLines.length > 0) {
-            filesProcessed += fileCompletedLines.length;
-            const progressPercent = Math.min(Math.round((filesProcessed / totalFiles) * 100), 100);
-            
-            // Update progress notification
-            progress.report({ 
-              message: `${progressPercent}% complete (${filesProcessed}/${totalFiles} files)`, 
-              increment: progressPercent - lastProgressUpdate 
-            });
-            
-            // Update status bar
-            pfdaStatusBarItem.text = `$(cloud-upload) PFDA: ${filesProcessed}/${totalFiles} files`;
-            lastProgressUpdate = progressPercent;
-          }
-          
-          // Also check for percentage-based progress for individual large files
-          const progressLines = output.split('\n').filter((line: string) => line.includes('Progress:'));
-          
-          if (progressLines.length > 0) {
-            const latestProgress = progressLines[progressLines.length - 1];
-            const match = latestProgress.match(/Progress:\s*(\d+)%/);
-            if (match && match[1]) {
-              const progressPercentage = parseInt(match[1], 10);
-              // Only update status bar with file progress
-              if (progressPercentage - lastProgressUpdate >= 5 || progressPercentage === 100) {
-                pfdaStatusBarItem.text = `$(cloud-upload) PFDA: ${filesProcessed}/${totalFiles} files (current: ${progressPercentage}%)`;
-              }
-            }
-          }
-        });
-        
-        proc.stderr.on('data', (data) => { 
-          stderr += data.toString();
-          console.error(`PfdaCli Upload Error: ${data.toString()}`);
-        });
-        
-        proc.on('error', (err) => {
-          console.error(`PfdaCli Upload Process Error: ${err.message}`);
-          reject(err);
-        });
-        
-        proc.on('close', (code) => {
-          // Reset status bar
-          pfdaStatusBarItem.text = '$(cloud) PFDA';
-          pfdaStatusBarItem.tooltip = 'PFDA Services Status';
-          console.log(code);
-          
-          if (code !== 0) {
-            console.error(`PfdaCli: Upload command failed with code ${code}: ${stderr}`);
-            reject(new Error(stderr || `pfda upload exited with code ${code}`));
+          if (entry.isDirectory()) {
+            const filesInDir = await countFilesInDirectory(fullPath);
+            fileCount += filesInDir;
           } else {
-            console.log(`PfdaCli: Upload command succeeded`);
-            resolve();
+            fileCount++;
+          }
+        }
+      } catch (e) {
+        console.error(`Error counting files in ${dirPath}:`, e);
+      }
+      
+      return fileCount;
+    };
+    
+    // Count all files
+    for (const file of fileStats) {
+      if (file.isDirectory) {
+        const filesInDir = await countFilesInDirectory(file.path);
+        totalFiles += filesInDir;
+      } else {
+        totalFiles++;
+      }
+    }
+    
+    console.log(`PfdaCli: Total files to upload: ${totalFiles}`);
+    
+    // If no files found, exit early
+    if (totalFiles === 0) {
+      console.log(`PfdaCli: No files found to upload`);
+      vscode.window.showWarningMessage('No files found to upload.');
+      return;
+    }
+    
+    // Start streaming upload to capture CLI progress lines
+    let processedCount = 0;
+    pfdaStatusBarItem.text = `$(cloud-upload) PFDA: Uploading 0/${totalFiles} files`;
+    pfdaStatusBarItem.tooltip = `Uploading ${totalFiles} file(s)`;
+    // Build args for upload
+    const args = ['upload-file', ...filePaths];
+    if (spaceId && spaceId !== 'my-home') {
+      args.push('-space-id', spaceId);
+    }
+    if (folderId) {
+      args.push('-folder-id', folderId);
+    }
+    if (options?.threads) {
+      args.push('-threads', options.threads.toString());
+    }
+    if (options?.chunksize) {
+      args.push('-chunksize', options.chunksize.toString());
+    }
+    console.log(`PfdaCli: Executing upload command: ${this.cliPath} ${args.join(' ')}`);
+    return new Promise<void>((resolve, reject) => {
+      const proc = spawn(this.cliPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stderr = '';
+      proc.stdout.on('data', (data) => {
+        const output = data.toString();
+        output.split(/\r?\n/).forEach((line: string) => {
+          console.log(`PfdaCli: Upload output: ${line}`);
+          if (line.includes('Uploaded:')) {
+            processedCount++;
+            const percent = Math.round((processedCount / totalFiles) * 100);
+            if (progress) {
+              progress.report({ message: `Uploaded ${processedCount}/${totalFiles} files (${percent}%)`, increment: 100 / totalFiles });
+            }
+            pfdaStatusBarItem.text = `$(cloud-upload) PFDA: ${processedCount}/${totalFiles} files`;
+          }
+          if (line.includes('Done!')) {
+            // Completed all uploads
+            if (progress) {
+              progress.report({ message: `Upload complete`, increment: 100 });
+            }
           }
         });
+      });
+      proc.stderr.on('data', (data) => { stderr += data.toString(); });
+      proc.on('error', (err) => reject(err));
+      proc.on('close', (code) => {
+        // Reset status bar
+        pfdaStatusBarItem.text = '$(cloud) PFDA';
+        pfdaStatusBarItem.tooltip = 'PFDA Services Status';
+        if (code !== 0) {
+          reject(new Error(stderr || `pfda upload exited with code ${code}`));
+        } else {
+          resolve();
+        }
       });
     });
   }
-
 
   public static findPfdaCliPath(workspacePath: string): string {
     const whichResult = spawnSync('which', ['pfda']);
@@ -325,7 +267,6 @@ export class PfdaCli {
 
     throw new Error(`PFDA CLI not found. Checked: ${possiblePaths.join(', ')} and PATH`);
   }
-
 
   /**
    * Recursively delete a remote PFDA directory
