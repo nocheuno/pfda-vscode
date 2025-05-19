@@ -13,6 +13,14 @@ This extension demonstrates integration with the PFDA platform, providing a full
 - View app execution status
 
 ## Development
+1. Run file watcher in VS Code
+```
+pnpm run watch 
+```
+
+2. Open extension in new VS Code window by pressing F5 (fn+F5)
+
+## Build
 
 To build and package this VS Code extension, follow these steps:
 
