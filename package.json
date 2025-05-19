@@ -1,5 +1,5 @@
 {
-	"name": "pfda-vscode-plugin",
+	"name": "pfda-vscode",
 	"displayName": "VSCode Plugin",
 	"description": "A plugin for the PFDA platform that provides a file explorer, execution explorer, and app explorer.",
 	"version": "0.0.1",
